@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>Link Admin</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        body{
+            height:auto;
+            min-height:100vh;
+            align-items:flex-start;
+            padding:20px 0;
+        }
+        #adminLogin, #adminPanel{
+            width:420px;
+            max-width:92vw;
+            display:flex;
+            flex-direction:column;
+            gap:15px;
+        }
+        .card{
+            background:#222;
+            border-radius:8px;
+            padding:12px;
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+        }
+        .card h3{ margin:0; }
+        .row{
+            display:flex;
+            gap:8px;
+            align-items:center;
+            justify-content:space-between;
+            background:#1a1a1a;
+            border-radius:8px;
+            padding:8px;
+            font-size:15px;
+        }
+        .row .code{ user-select:all; opacity:0.8; }
+        .small{ padding:6px 10px; font-size:14px; }
+        .danger{ background:#b33; }
+        .inline{ display:flex; gap:8px; }
+        .inline input{ flex:1; min-width:0; font-size:16px; }
+    </style>
+
+    <script type="module" src="admin.js"></script>
+</head>
+
+<body>
+
+<div id="adminLogin">
+
+    <h1>Admin</h1>
+
+    <input id="emailInput" type="email" placeholder="Email">
+    <input id="passwordInput" type="password" placeholder="Password">
+
+    <div id="authError" class="error"></div>
+
+    <button id="signInBtn">Sign in</button>
+
+</div>
+
+
+<div id="adminPanel" style="display:none;">
+
+    <div class="inline">
+        <h1 style="margin:0;flex:1;">Groups</h1>
+        <button id="signOutBtn" class="secondary small">Sign out</button>
+    </div>
+
+    <div class="card">
+        <h3>New group</h3>
+        <input id="groupNameInput" maxlength="30" placeholder="Group name">
+        <textarea id="memberNamesInput" rows="4" maxlength="600"
+            placeholder="Member names (one per line)"></textarea>
+        <div id="createError" class="error"></div>
+        <button id="createBtn">Create</button>
+    </div>
+
+    <div id="panelError" class="error"></div>
+
+    <div id="groupList"></div>
+
+</div>
+
+</body>
+</html>

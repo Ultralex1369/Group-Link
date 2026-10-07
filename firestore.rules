@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Replace with YOUR user id from Firebase Console -> Authentication -> Users
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.uid == 'PASTE_YOUR_ADMIN_UID_HERE';
+    }
+
+    match /groups/{groupCode} {
+
+      // Anyone who knows a group code can look that one group up.
+      // Only you can list all groups or create / change / delete them.
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+
+      match /members/{memberCode} {
+        allow get: if true;
+        allow list: if isAdmin();
+        allow create, update, delete: if isAdmin();
+      }
+
+      match /messages/{messageId} {
+
+        allow read: if true;
+
+        allow create: if request.resource.data.keys().hasOnly(['sender', 'senderId', 'text', 'time'])
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 1000;
+
+        // only you can remove messages (moderation / deleting a group)
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+  }
+}

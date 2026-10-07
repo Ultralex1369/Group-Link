@@ -19,8 +19,11 @@
     <input
         id="codeInput"
         type="password"
-        maxlength="4"
+        maxlength="10"
+        autocomplete="off"
         placeholder="Enter Code">
+
+    <div id="loginError" class="error"></div>
 
     <button id="continueBtn">
         Continue
@@ -33,16 +36,22 @@
 
     <div id="welcomeText"></div>
 
-    <h2>Conversation</h2>
+    <h2 id="groupTitle">Conversation</h2>
 
     <div id="messages"></div>
 
     <input
         id="messageInput"
+        maxlength="1000"
+        autocomplete="off"
         placeholder="Type a message">
 
     <button id="sendBtn">
         Send
+    </button>
+
+    <button id="logoutBtn" class="secondary">
+        Log out
     </button>
 
 </div>

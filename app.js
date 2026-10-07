@@ -1,125 +1,199 @@
-import { sendMessage, listenForMessages } from "./firebase.js";
+import {
+    getGroup,
+    getMember,
+    sendMessage,
+    listenForMessages
+} from "./firebase.js";
 
 
-const CODES = {
-    "2031": "Alex",
-    "2222": "Sam",
-    "3333": "Jordan"
-};
+// A full code is GROUP part + MEMBER part, e.g. 7KQ2 + M4XB = 7KQ2M4XB
+// Longer group part = harder for strangers to guess.
+const GROUP_LEN = 4;
+const MEMBER_LEN = 4;
+
+const SAVE_KEY = "groupLinkSession";
+
+const $ = (id) => document.getElementById(id);
+
+let session = null;        // { groupCode, memberCode, name, groupName }
+let stopListening = null;
 
 
-let currentUser = "";
+// ---------- helpers ----------
+
+function parseCode(raw) {
+
+    const clean = raw.replace(/[^a-z0-9]/gi, "").toUpperCase();
+
+    if (clean.length !== GROUP_LEN + MEMBER_LEN) return null;
+
+    return {
+        groupCode: clean.slice(0, GROUP_LEN),
+        memberCode: clean.slice(GROUP_LEN)
+    };
+}
+
+function formatCode(groupCode, memberCode) {
+    return groupCode + "-" + memberCode;
+}
+
+function show(screenId) {
+    ["loginScreen", "chatScreen"].forEach((id) => {
+        $(id).style.display = (id === screenId) ? "flex" : "none";
+    });
+}
+
+function setError(message) {
+    $("loginError").textContent = message || "";
+}
 
 
-const continueBtn = document.getElementById("continueBtn");
+// ---------- login ----------
 
+async function login(rawCode) {
 
-continueBtn.onclick = () => {
+    const parsed = parseCode(rawCode);
 
-    const code = document.getElementById("codeInput").value;
-
-
-    if (CODES[code]) {
-
-        currentUser = CODES[code];
-
-    } else {
-
-        alert("Wrong Code");
-        return;
-
+    if (!parsed) {
+        setError("Codes are " + (GROUP_LEN + MEMBER_LEN) + " characters.");
+        return false;
     }
 
+    try {
 
-   document.getElementById("loginScreen").style.display = "none";
+        const group = await getGroup(parsed.groupCode);
+        const member = group && await getMember(parsed.groupCode, parsed.memberCode);
 
-document.getElementById("chatScreen").style.display = "flex";
+        if (!group || !member) {
+            setError("Wrong code");
+            return false;
+        }
 
-document.getElementById("welcomeText").textContent =
-    "Welcome, " + currentUser;
+        session = {
+            groupCode: parsed.groupCode,
+            memberCode: parsed.memberCode,
+            name: member.name,
+            groupName: group.name
+        };
 
-loadMessages();
+    } catch (err) {
+        console.error(err);
+        setError("Couldn't connect. Try again.");
+        return false;
+    }
 
-};
+    localStorage.setItem(SAVE_KEY, parsed.groupCode + parsed.memberCode);
+    setError("");
+    enterChat();
+    return true;
+}
+
+function enterChat() {
+
+    show("chatScreen");
+
+    $("welcomeText").textContent = "Welcome, " + session.name;
+    $("groupTitle").textContent = session.groupName;
+
+    $("messages").innerHTML = "";
+
+    stopListening = listenForMessages(session.groupCode, renderMessages);
+}
+
+function logout() {
+
+    if (stopListening) stopListening();
+    stopListening = null;
+    session = null;
+
+    localStorage.removeItem(SAVE_KEY);
+
+    $("codeInput").value = "";
+    show("loginScreen");
+}
+
+$("continueBtn").onclick = () => login($("codeInput").value);
+
+$("codeInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") login($("codeInput").value);
+});
+
+$("logoutBtn").onclick = logout;
 
 
+// ---------- messages ----------
 
-const sendBtn = document.getElementById("sendBtn");
+async function send() {
 
+    const input = $("messageInput");
+    const text = input.value;
 
-sendBtn.onclick = async () => {
-
-    const input = document.getElementById("messageInput");
-
-    await sendMessage(currentUser, input.value);
+    if (!text.trim() || !session) return;
 
     input.value = "";
+    $("sendBtn").disabled = true;
 
-};
+    try {
+        await sendMessage(session.groupCode, session.memberCode, session.name, text);
+    } catch (err) {
+        console.error(err);
+        input.value = text;   // give the text back if it failed
+    }
 
-
-
-function loadMessages() {
-
-    listenForMessages((messages) => {
-
-        const container = document.getElementById("messages");
-
-        container.innerHTML = "";
-
-
-        messages.forEach((message) => {
-
-            const wrapper = document.createElement("div");
-
-            wrapper.classList.add("message");
-
-
-            const sender = document.createElement("div");
-            const text = document.createElement("div");
-            const time = document.createElement("div");
-
-
-            if (message.sender === currentUser) {
-
-    wrapper.classList.add("mine");
-
-    sender.textContent = "You";
-
-} else {
-
-    wrapper.classList.add("theirs");
-
-    sender.textContent = message.sender;
-
+    $("sendBtn").disabled = false;
+    input.focus();
 }
 
+$("sendBtn").onclick = send;
 
-            text.textContent = message.text;
-
-
-            if (message.time) {
-
-                const date = message.time.toDate();
-
-                time.textContent = date.toLocaleTimeString([], {
-                    hour: "numeric",
-                    minute: "2-digit"
-                });
-
-            }
+$("messageInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") send();
+});
 
 
-            wrapper.appendChild(sender);
-            wrapper.appendChild(text);
-            wrapper.appendChild(time);
+function renderMessages(messages) {
 
+    const container = $("messages");
+    const frag = document.createDocumentFragment();
 
-            container.appendChild(wrapper);
-            container.scrollTop = container.scrollHeight;
+    messages.forEach((message) => {
 
-        });
+        const wrapper = document.createElement("div");
+        const sender = document.createElement("div");
+        const text = document.createElement("div");
+        const time = document.createElement("div");
 
+        wrapper.classList.add("message");
+
+        if (message.senderId === session.memberCode) {
+            wrapper.classList.add("mine");
+            sender.textContent = "You";
+        } else {
+            wrapper.classList.add("theirs");
+            sender.textContent = message.sender;
+        }
+
+        text.textContent = message.text;
+
+        // time is empty for a split second while the server stamps it
+        if (message.time) {
+            time.textContent = message.time.toDate().toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit"
+            });
+        }
+
+        wrapper.append(sender, text, time);
+        frag.appendChild(wrapper);
     });
 
+    container.replaceChildren(frag);
+    container.scrollTop = container.scrollHeight;
 }
+
+
+// ---------- stay logged in ----------
+
+const saved = localStorage.getItem(SAVE_KEY);
+
+if (saved) login(saved);
