@@ -10,42 +10,119 @@
 
     <style>
         body{
-            height:auto;
-            min-height:100vh;
-            align-items:flex-start;
-            padding:20px 0;
+            display:block;
+            height:100vh;
+            overflow:hidden;
         }
-        #adminLogin, #adminPanel{
-            width:420px;
+
+        /* ---- sign in ---- */
+        #adminLogin{
+            width:320px;
             max-width:92vw;
+            margin:12vh auto 0;
             display:flex;
             flex-direction:column;
             gap:15px;
         }
-        .card{
-            background:#222;
-            border-radius:8px;
+
+        /* ---- main layout ---- */
+        #adminPanel{
+            height:100vh;
+            display:flex;
+            flex-direction:column;
+        }
+
+        #topBar{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            padding:10px 14px;
+            border-bottom:1px solid #2a2a2a;
+        }
+        #topBar h1{ margin:0; font-size:22px; }
+
+        #layout{
+            flex:1;
+            min-height:0;
+            display:grid;
+            grid-template-columns:200px 1fr 300px;
+            gap:12px;
             padding:12px;
+        }
+
+        .pane{
+            background:#1a1a1a;
+            border-radius:8px;
+            padding:10px;
+            min-height:0;
             display:flex;
             flex-direction:column;
             gap:10px;
+            overflow-y:auto;
         }
-        .card h3{ margin:0; }
-        .row{
+
+        /* ---- group list ---- */
+        .groupItem{
             display:flex;
-            gap:8px;
-            align-items:center;
             justify-content:space-between;
-            background:#1a1a1a;
+            align-items:center;
+            padding:9px 10px;
+            background:#222;
             border-radius:8px;
-            padding:8px;
+            cursor:pointer;
             font-size:15px;
         }
-        .row .code{ user-select:all; opacity:0.8; }
-        .small{ padding:6px 10px; font-size:14px; }
+        .groupItem:hover{ background:#2c2c2c; }
+        .groupItem.active{ background:#4CAF50; }
+        .groupItem .gcode{ font-size:12px; opacity:0.7; }
+
+        /* ---- chat pane ---- */
+        #chatPane h2{ margin:0; text-align:center; font-size:20px; }
+        #messages{
+            flex:1;
+            height:auto;
+            min-height:0;
+        }
+        .msgDelete{
+            background:none;
+            color:#ff6b6b;
+            font-size:11px;
+            padding:2px 0 0;
+            opacity:0.6;
+        }
+        .msgDelete:hover{ opacity:1; }
+        .placeholder{
+            margin:auto;
+            opacity:0.5;
+            text-align:center;
+        }
+
+        /* ---- controls pane ---- */
+        .pane h3{ margin:0; font-size:17px; }
+        .row{
+            display:flex;
+            gap:6px;
+            align-items:center;
+            background:#222;
+            border-radius:8px;
+            padding:6px 8px;
+            font-size:14px;
+        }
+        .row .name{ flex:1; min-width:0; overflow-wrap:anywhere; }
+        .row .code{ user-select:all; opacity:0.7; font-size:13px; }
+        .small{ padding:5px 9px; font-size:13px; }
         .danger{ background:#b33; }
-        .inline{ display:flex; gap:8px; }
-        .inline input{ flex:1; min-width:0; font-size:16px; }
+        .inline{ display:flex; gap:6px; }
+        .inline input{ flex:1; min-width:0; font-size:15px; padding:8px; }
+        .pane input, .pane textarea{ font-size:15px; padding:9px; }
+
+        /* ---- phones / narrow windows ---- */
+        @media (max-width:850px){
+            body{ overflow:auto; height:auto; }
+            #adminPanel{ height:auto; }
+            #layout{ display:flex; flex-direction:column; }
+            #messages{ height:300px; flex:none; }
+        }
     </style>
 
     <script type="module" src="admin.js"></script>
@@ -69,23 +146,27 @@
 
 <div id="adminPanel" style="display:none;">
 
-    <div class="inline">
-        <h1 style="margin:0;flex:1;">Groups</h1>
+    <div id="topBar">
+        <h1>Link Admin</h1>
         <button id="signOutBtn" class="secondary small">Sign out</button>
     </div>
 
-    <div class="card">
-        <h3>New group</h3>
-        <input id="groupNameInput" maxlength="30" placeholder="Group name">
-        <textarea id="memberNamesInput" rows="4" maxlength="600"
-            placeholder="Member names (one per line)"></textarea>
-        <div id="createError" class="error"></div>
-        <button id="createBtn">Create</button>
+    <div id="layout">
+
+        <!-- left: list of groups -->
+        <div class="pane" id="sidebar">
+            <button id="newGroupBtn" class="small">+ New group</button>
+            <div id="panelError" class="error"></div>
+            <div id="groupList"></div>
+        </div>
+
+        <!-- middle: read-only chat -->
+        <div class="pane" id="chatPane"></div>
+
+        <!-- right: controls -->
+        <div class="pane" id="controlPane"></div>
+
     </div>
-
-    <div id="panelError" class="error"></div>
-
-    <div id="groupList"></div>
 
 </div>
 
