@@ -26,11 +26,10 @@ import {
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// These MUST match GROUP_LEN / MEMBER_LEN in app.js
-const GROUP_LEN = 4;
-const MEMBER_LEN = 4;
+// New groups/members get 2-digit codes (01-99), so a login code is 4 digits: GROUP + MEMBER.
+// Older groups with 4-character codes are still supported.
 
-// No 0/O or 1/I so codes are easy to read out loud
+// Old-style codes (only used when adding people to an older group)
 const ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 const $ = (id) => document.getElementById(id);
@@ -56,6 +55,23 @@ function uniqueCode(length, used) {
     } while (used.has(code));
     used.add(code);
     return code;
+}
+
+// Picks a free 2-digit code from 01-99 (null if all 99 are taken)
+function pickCode(used) {
+
+    const free = [];
+
+    for (let i = 1; i <= 99; i++) {
+        const c = String(i).padStart(2, "0");
+        if (!used.has(c)) free.push(c);
+    }
+
+    if (free.length === 0) return null;
+
+    const pick = free[crypto.getRandomValues(new Uint32Array(1))[0] % free.length];
+    used.add(pick);
+    return pick;
 }
 
 function el(tag, props = {}, ...children) {
@@ -204,13 +220,24 @@ function showNewGroup() {
             return;
         }
 
+        if (names.length > 99) {
+            error.textContent = "A group can have at most 99 members.";
+            return;
+        }
+
         createBtn.disabled = true;
         error.textContent = "";
 
         try {
 
             const used = new Set(groups.map((g) => g.code));
-            const groupCode = uniqueCode(GROUP_LEN, used);
+            const groupCode = pickCode(used);
+
+            if (!groupCode) {
+                error.textContent = "All 99 group codes are in use.";
+                createBtn.disabled = false;
+                return;
+            }
 
             const memberCodes = new Set();
             const batch = writeBatch(db);
@@ -221,7 +248,7 @@ function showNewGroup() {
             });
 
             names.forEach((name) => {
-                const code = uniqueCode(MEMBER_LEN, memberCodes);
+                const code = pickCode(memberCodes);
                 batch.set(doc(db, "groups", groupCode, "members", code), { name });
             });
 
@@ -411,7 +438,13 @@ async function renderControls(code) {
         if (!name) return;
 
         const used = new Set(members.map((m) => m.code));
-        const memberCode = uniqueCode(MEMBER_LEN, used);
+        // older groups (4-character code) keep 4-character member codes
+        const memberCode = code.length === 2 ? pickCode(used) : uniqueCode(4, used);
+
+        if (!memberCode) {
+            alert("This group already has 99 members.");
+            return;
+        }
 
         await setDoc(doc(db, "groups", code, "members", memberCode), { name });
         renderControls(code);

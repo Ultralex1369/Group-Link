@@ -6,10 +6,8 @@ import {
 } from "./firebase.js";
 
 
-// A full code is GROUP part + MEMBER part, e.g. 7KQ2 + M4XB = 7KQ2M4XB
-// Longer group part = harder for strangers to guess.
-const GROUP_LEN = 4;
-const MEMBER_LEN = 4;
+// A full code is 4 digits: GROUP (2 digits) + MEMBER (2 digits), e.g. 12 + 05 = 1205.
+// Older 8-character codes (4 + 4) still work too, so existing groups keep running.
 
 const SAVE_KEY = "groupLinkSession";
 
@@ -25,11 +23,15 @@ function parseCode(raw) {
 
     const clean = raw.replace(/[^a-z0-9]/gi, "").toUpperCase();
 
-    if (clean.length !== GROUP_LEN + MEMBER_LEN) return null;
+    let groupLen;
+
+    if (clean.length === 4) groupLen = 2;          // new style: 12-05
+    else if (clean.length === 8) groupLen = 4;     // old style: 7KQ2-M4XB
+    else return null;
 
     return {
-        groupCode: clean.slice(0, GROUP_LEN),
-        memberCode: clean.slice(GROUP_LEN)
+        groupCode: clean.slice(0, groupLen),
+        memberCode: clean.slice(groupLen)
     };
 }
 
@@ -55,7 +57,7 @@ async function login(rawCode) {
     const parsed = parseCode(rawCode);
 
     if (!parsed) {
-        setError("Codes are " + (GROUP_LEN + MEMBER_LEN) + " characters.");
+        setError("Codes are 4 digits.");
         return false;
     }
 
